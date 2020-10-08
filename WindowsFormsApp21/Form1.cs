@@ -17,15 +17,33 @@ namespace WindowsFormsApp21
         public delegate void AsyncMove();
         Ball[] redballs = new Ball[2];
         Ball[] blueballs = new Ball[2];
+
         public Form1()
+        {
+ 
+            /*redballs[0] = new Ball(new Point(0, 100), "Right", false, Brushes.Red);
+            redballs[1] = new Ball(new Point(0, 300), "Right", false, Brushes.Red);
+            blueballs[0] = new Ball(new Point(1085, 200), "Left", false, Brushes.Blue);
+            blueballs[1] = new Ball(new Point(1085, 400), "Left", false, Brushes.Blue);*/
+            DoubleBuffered = true;
+            InitializeComponent();
+            ThreadPool.QueueUserWorkItem(CreateObjects);
+
+            /*evAsync += redballs[0].StartMoving;
+            evAsync += redballs[1].StartMoving;
+            
+            Start();
+
+            redballs[0].ChangeDirection += blueballs[0].StartMoving;
+            redballs[1].ChangeDirection += blueballs[1].StartMoving;*/
+
+        }
+        private void CreateObjects(object o)
         {
             redballs[0] = new Ball(new Point(0, 100), "Right", false, Brushes.Red);
             redballs[1] = new Ball(new Point(0, 300), "Right", false, Brushes.Red);
             blueballs[0] = new Ball(new Point(1085, 200), "Left", false, Brushes.Blue);
             blueballs[1] = new Ball(new Point(1085, 400), "Left", false, Brushes.Blue);
-            DoubleBuffered = true;
-            InitializeComponent();
-
             evAsync += redballs[0].StartMoving;
             evAsync += redballs[1].StartMoving;
 
@@ -33,6 +51,13 @@ namespace WindowsFormsApp21
 
             redballs[0].ChangeDirection += blueballs[0].StartMoving;
             redballs[1].ChangeDirection += blueballs[1].StartMoving;
+            int x = Thread.CurrentThread.ManagedThreadId;
+
+            this.Invoke((Action)delegate
+            {
+                this.Text = String.Format(" Processing {0} on thread {1}", redballs, x);
+
+            });
 
         }
 
@@ -41,14 +66,13 @@ namespace WindowsFormsApp21
         public event DelAsyncEv evAsync;
         public void Start()
         {
-            
-                Delegate[] delList = evAsync.GetInvocationList();
 
-                foreach (Delegate del in delList)
-                {
-                    DelAsyncEv deleg = (DelAsyncEv)del; 
-                    deleg.BeginInvoke(null, null);
-                }
+            Delegate[] delList = evAsync.GetInvocationList();
+            Parallel.ForEach(delList, (Delegate del) =>
+            {
+                DelAsyncEv deleg = (DelAsyncEv)del;
+                deleg.BeginInvoke(null, null);
+            });
         }
 
 
@@ -98,8 +122,9 @@ namespace WindowsFormsApp21
             }
 
 
-            public void Move()
+            public void Move(object obj)
             {
+                this.stop = true;
                 while (this.direction == "Right" && this.stop == true)
                 {
                     Thread.Sleep(100);
@@ -133,11 +158,11 @@ namespace WindowsFormsApp21
             public void StartMoving()
             {
                 this.stop = true;
-                Move();
+                Move(this);
 
-                /*AsyncMove am = new AsyncMove(Move);
+               /* AsyncMove am = new AsyncMove(Move);
                 am.BeginInvoke(new AsyncCallback(CallBackMove), am);*/
-
+               
             }
 
             public void CallBackMove(IAsyncResult res)
